@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>A little GeoJSON shower</title>
+    <script src="test.js"></script>
+    <script src="Mapeczka.js"></script>
+  </head>
+  <body onload="init();">
+    <svg id="shower" width="600" height="600"></svg>
+    <div style="display:block;width:200px;float:left">
+    <input type="file" id="files" name="file" multiple />
+        <div id="poka" style="display:block">
+
+        </div>
+        <p>
+        Projection:
+        <select id="projectionselect">
+            <option value="orthogonal" selected>Orthogonal</option>
+            <option value="equirectangular">Equirectangular</option>
+        </select>
+        </p>
+        <input type="button" id="erase" value="ERASE" />
+        <p>
+        Z,X and arrows to move
+        </p>
+    </div>
+  </body>
+</html>
