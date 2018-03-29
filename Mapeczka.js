@@ -105,12 +105,42 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
                     }
                 else
                     return null;
+            case "azimuthal-equidistant":
+                    var rho = this._rho(longitude,this.long_0,latitude,this.lat_0);
+                    var theta = this._theta(longitude,this.long_0,latitude,this.lat_0);
+                    return {
+                            x:rho*Math.sin(theta),
+                            y:-rho*Math.cos(theta)
+                    }
+            break;
+            case "gnomonic":
+                    var rho = this._rho(longitude,this.long_0,latitude,this.lat_0);
+                    var theta = this._theta(longitude,this.long_0,latitude,this.lat_0);
+                    if(rho<Math.PI/2)
+                        return {
+                                x:Math.tan(rho)*Math.sin(theta),
+                                y:-Math.tan(rho)*Math.cos(theta)
+                        }
+                    else
+                        return null;
+            break;
+            case "lambert":
+                    var k = Math.sqrt(2/(1+Math.sin(this.lat_0)*Math.sin(latitude)+Math.cos(this.lat_0)*Math.cos(latitude)*Math.cos(longitude-this.long_0)));
+                    return {
+                            x:k*Math.cos(latitude)*Math.sin(longitude-this.long_0),
+                            y:-k*(Math.cos(this.lat_0)*Math.sin(latitude)-Math.sin(this.lat_0)*Math.cos(latitude)*Math.cos(longitude-this.long_0))
+                    }
             break;
             default:
                 throw new Error("projection not included in the library");
         }
     }
-
+    this._rho = function(long,long0,lat,lat0){
+        return Math.acos(Math.sin(lat0)*Math.sin(lat)+Math.cos(lat0)*Math.cos(lat)*Math.cos(long-long0));
+    }
+    this._theta = function(long,long0,lat,lat0){
+        return Math.atan2((Math.cos(lat)*Math.sin(long-long0)),(Math.cos(lat0)*Math.sin(lat)-Math.sin(lat0)*Math.cos(lat)*Math.cos(long-long0)));
+    }
 
     //reads geoJSON and adds it to the map (NO RENDER HERE)
     this.addGeoJSON = function(string,color){
