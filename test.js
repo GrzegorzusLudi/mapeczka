@@ -54,6 +54,10 @@ function keyDown(e){
        latitude-=speed/scale;
        e.preventDefault();
    }
+   if(latitude>90)
+       latitude = 90;
+   if(latitude<-90)
+       latitude = -90;
    if(e.key=='0'){
        scale = 1;
        longitude = 20;
@@ -74,7 +78,7 @@ function readFiles(evt) {
             r.onload = function(e) {
                 var contents = e.target.result;
 
-                mapa.addGeoJSON(contents,getRandomColor());
+                mapa.addGeoJSON(contents,getRandomColor(),"black");
                 mapa.redraw();
             }
             r.readAsText(f[i]);

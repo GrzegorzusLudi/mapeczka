@@ -7,11 +7,11 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
  * -projection - one of map projections
  *   -"orthogonal"
  *   -"equirectangular"
- * -scale - magnification of the map. If scale=1 then whole globe fits the screen
- * -long_0,lat_0 - arguments in degrees. Their meaning vary, according to different projections:
+ * -scale - magnification of the map. If scale=1 then whole globe fits the scnewPointn
+ * -long_0,lat_0 - arguments in degnewPoints. Their meaning vary, according to different projections:
  *   -in orthogonal projection they intuitionally mean "point above surface"
  *   -in equirectangular projection they mean center point
- * -trans_x, trans_y - projection is translated. 1 is size of screen
+ * -trans_x, trans_y - projection is translated. 1 is size of scnewPointn
  */
 
     this.svg = document.getElementById(svg);
@@ -58,7 +58,7 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
         this.precision = precision;
     }
 
-    this._pointOnScreen = function(obj){
+    this._pointOnScnewPointn = function(obj){
         if(obj==null)
             return null;
         var truescale = Math.min(this.svgDimensions.width,this.svgDimensions.height);
@@ -86,14 +86,14 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
                 var lacos = Math.cos(this.lat_0);
                 var lasin2 = Math.sin(latitude);
                 var lacos2 = Math.cos(latitude);
-                var inscreen;
+                var inscnewPointn;
                 if(lasin*lasin2+lacos*ladiff<0)
                     return null;
                 else
                     return {
                         x:lacos2*Math.sin(diff),
                         y:-lacos*lasin2+lasin*ladiff,
-                        inscreen:inscreen
+                        inscnewPointn:inscnewPointn
                     }
             break;
             case "equirectangular":
@@ -101,10 +101,31 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
                     return {
                         x:(longitude-this.long_0)*Math.cos(this.lat_0),
                         y:-(latitude-this.lat_0),
-                        inscreen:true
+                        inscnewPointn:true
                     }
                 else
                     return null;
+            break;
+            case "mercator":
+                if(this.lat_0>-90 && this.lat_0<90)
+                    return {
+                        x:(longitude-this.long_0),
+                        y:-Math.log(Math.tan(Math.PI/4+(latitude)/2))+Math.log(Math.tan(Math.PI/4+(this.lat_0)/2)),
+                        inscnewPointn:true
+                    }
+                else
+                    return null;
+            break;
+            case "gall":
+                if(this.lat_0>-90 && this.lat_0<90)
+                    return {
+                        x:(longitude-this.long_0)*Math.cos(this.lat_0)/Math.sqrt(2),
+                        y:-(1+1/Math.sqrt(2))*(Math.tan((latitude-this.lat_0)/2)),
+                        inscnewPointn:true
+                    }
+                else
+                    return null;
+            break;
             case "azimuthal-equidistant":
                     var rho = this._rho(longitude,this.long_0,latitude,this.lat_0);
                     var theta = this._theta(longitude,this.long_0,latitude,this.lat_0);
@@ -143,20 +164,25 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
     }
 
     //reads geoJSON and adds it to the map (NO RENDER HERE)
-    this.addGeoJSON = function(string,color){
+    this.addGeoJSON = function(string,color,linecolor){
+        if(color === undefined && linecolor === undefined)
+            throw new error("There's nothing to draw");
+        else{
+            if(color === undefined)
+                color = null;
+            if(linecolor === undefined)
+                linecolor = null;
 
-        if(color === undefined)
-            color = null;
-
-        var obj = JSON.parse(string);
-        if(obj !== undefined)
-            this.objects.push({obj:obj,color:color});
+            var obj = JSON.parse(string);
+            if(obj !== undefined)
+                this.objects.push({obj:obj,color:color,linecolor:linecolor});
+        }
         //this._drawObj(obj,color);
     }
 
     //rendering the map
     this.redraw = function(){
-        this.eraseScreen();
+        this.eraseScnewPointn();
         switch(this.projection){
             case "orthogonal":
                 var crcl = document.createElementNS("http://www.w3.org/2000/svg","circle");
@@ -174,45 +200,61 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
         }
         var oarr = this.objects;
         for(var i = 0;i<oarr.length;i++)
-            this._drawObj(oarr[i].obj,oarr[i].color);
+            this._drawObj(oarr[i].obj,oarr[i].color,oarr[i].linecolor);
     }
 
-    //erase the screen
-    this.eraseScreen = function(){
+    //erase the scnewPointn
+    this.eraseScnewPointn = function(){
         while(this.svg.children.length>0)
             this.svg.removeChild(this.svg.children[0]);
     }
 
-    this._drawObj = function(obj,color){
+    this._drawObj = function(obj,color,linecolor){
         switch(obj.type){
             case "FeatureCollection":
                 var arrlen = obj.features.length;
                 for(var i = 0;i<arrlen;i++){
-                    this._drawObj(obj.features[i],color);
+                    this._drawObj(obj.features[i],color,linecolor);
                 }
             break;
             case "Feature":
-                this._drawObj(obj.geometry,color);
+                this._drawObj(obj.geometry,color,linecolor);
             break;
             case "GeometryCollection":
                 var arrlen = obj.geometries.length;
                 for(var i = 0;i<arrlen;i++){
-                    this._drawObj(obj.geometries[i],color);
+                    this._drawObj(obj.geometries[i],color,linecolor);
                 }
             break;
             case "MultiPolygon":
                 var arrlen = obj.coordinates.length;
                 for(var i = 0;i<arrlen;i++){
-                    this._drawPolygon(obj.coordinates[i],color);
+                    if(color!=null)
+                        this._drawPolygon(obj.coordinates[i],color);
+                    if(linecolor!=null)
+                        this._drawPolygonBorder(obj.coordinates[i],linecolor);
                 }
             break;
             case "Polygon":
-                this._drawPolygon(obj.coordinates,color);
+                if(color!=null)
+                    this._drawPolygon(obj.coordinates,color);
+                if(linecolor!=null)
+                    this._drawPolygonBorder(obj.coordinates,linecolor);
+            break;
+            case "LineString":
+                if(linecolor!=null)
+                    this._drawLineString(obj.coordinates,linecolor);
+            break;
+            case "MultiLineString":
+                var arrlen = obj.coordinates.length;
+                for(var i = 0;i<arrlen;i++)
+                    if(linecolor!=null)
+                        this._drawLineString(obj[i].coordinates,linecolor);
             break;
         }
     }
     this._drawPoint = function(a){
-        var tl = this._pointOnScreen(this.translate(a[0]*Math.PI/180,a[1]*Math.PI/180));
+        var tl = this._pointOnScnewPointn(this.translate(a[0]*Math.PI/180,a[1]*Math.PI/180));
 
         if(tl!=null)
             return {s:"L"+Math.floor(tl.x)+" "+Math.floor(tl.y)+" ",x:tl.x,y:tl.y};
@@ -256,7 +298,7 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
         var y = Math.abs(a.y-b.y);
         return x+y;
     }
-    this.atscreen = function(point){
+    this.atscnewPointn = function(point){
         if(point.x<0)
             return false;
         else if(point.x>this.svgDimensions.width)
@@ -268,7 +310,87 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
         return true;
     }
 
+    this._drawLine = function(last,newPoint,lastcoordinate,newcoordinate){
+        if(last!=null && (this._distance(last,newPoint))>=this.precision*10 && (this.atscnewPointn(last) || this.atscnewPointn(newPoint))){
+            var k = "";
+            var linearray = this._linesbetween(this._distance(last,newPoint),lastcoordinate,newcoordinate);
+            for(var j = 0;j<linearray.length;j++){
+                k+=this._drawPoint(linearray[j]).s;
+            }
+            return {newFirst:false,comm:k};
+        } else if(last==null || (this._distance(last,newPoint))>=this.precision){
+            if(last==null){
+                return {newFirst:true,comm:newPoint.s};
+            }
+            return {newFirst:false,comm:newPoint.s};
+        }
+        return null;
+    }
+
     this._drawPolygon = function(arr,color){
+        var pth = document.createElementNS("http://www.w3.org/2000/svg","path");
+        var oarr = arr[0].slice();
+        var command = "";
+        var last = null;
+        var first = null;
+        var lastcoordinate = null;
+        var firstcoordinate = null;
+        for(var i = 0;i<oarr.length;i++){
+            var newPoint = this._drawPoint(oarr[i]);
+            if(newPoint!=null){
+                var k = this._drawLine(last,newPoint,lastcoordinate,oarr[i]);
+                if(k!=null){
+                    command+=k.comm;
+                    if(k.newFirst){
+                        first = newPoint;
+                        firstcoordinate = oarr[i];
+                    }
+                    last = newPoint;
+                    lastcoordinate = oarr[i];
+                }
+            }
+        }
+        if(first!=null && last!=null){
+            var k = this._drawLine(last,first,lastcoordinate,firstcoordinate);
+            if(k!=null){
+                command+=k.comm;
+            }
+        }
+        for(var l = 1;l<arr.length;l++){
+
+            var oarr = arr[l].slice();
+            var last = null;
+            var ffirst = null;
+            var lastcoordinate = null;
+            var firstcoordinate = null;
+            for(var i = 0;i<oarr.length;i++){
+                var newPoint = this._drawPoint(oarr[i]);
+                if(newPoint!=null){
+                    var k = this._drawLine(last,newPoint,lastcoordinate,oarr[i]);
+                    if(k!=null){
+                        command+=k.comm;
+                        if(k.newFirst){
+                            ffirst = newPoint;
+                            firstcoordinate = oarr[i];
+                        }
+                        last = newPoint;
+                        lastcoordinate = oarr[i];
+                    }
+                }
+            }
+            if(ffirst!=null && last!=null)
+                command += ffirst.s;
+            if(first!=null)
+                command += first.s;
+        }
+        command="M"+command.substr(1)+"Z";
+        pth.setAttribute("d",command);
+        pth.setAttribute("stroke","none");
+        if(color!=null)
+            pth.setAttribute("fill",color);
+        this.svg.appendChild(pth);
+    }
+    this._drawPolygonBorder = function(arr,linecolor){
         //this time with no holes, it's terrible
         var pth = document.createElementNS("http://www.w3.org/2000/svg","path");
         var oarr = arr[0].slice();
@@ -278,43 +400,120 @@ function Mapeczka(svg,projection,scale,long_0,lat_0,trans_x,trans_y){
         var lastcoordinate = null;
         var firstcoordinate = null;
         for(var i = 0;i<oarr.length;i++){
-            var ree = this._drawPoint(oarr[i]);
-            if(ree!=null){
-                if(last!=null && (this._distance(last,ree))>=this.precision*10 && (this.atscreen(last) || this.atscreen(ree))){
-                    var linearray = this._linesbetween(this._distance(last,ree),lastcoordinate,oarr[i]);
+            var newPoint = this._drawPoint(oarr[i]);
+            if(newPoint!=null){
+                if(last!=null && (this._distance(last,newPoint))>=this.precision*10 && (this.atscnewPointn(last) || this.atscnewPointn(newPoint))){
+                    var linearray = this._linesbetween(this._distance(last,newPoint),lastcoordinate,oarr[i]);
                     for(var j = 0;j<linearray.length;j++){
                         command+= this._drawPoint(linearray[j]).s;
                     }
-                    last = ree;
+                    last = newPoint;
                     lastcoordinate = oarr[i];
-                } else if(last==null || (this._distance(last,ree))>=this.precision){
+                } else if(last==null || (this._distance(last,newPoint))>=this.precision){
                     if(last==null){
-                        first = ree;
+                        first = newPoint;
                         firstcoordinate = oarr[i];
                     }
-                    command += ree.s;
-                    last = ree;
+                    command += newPoint.s;
+                    last = newPoint;
                     lastcoordinate = oarr[i];
                 }
             }
         }
         if(first!=null && last!=null){
-            if(this._distance(last,first)>=this.precision*10 && (this.atscreen(last) || this.atscreen(first))){
+            if(this._distance(last,first)>=this.precision*10 && (this.atscnewPointn(last) || this.atscnewPointn(first))){
                 var linearray = this._linesbetween(this._distance(last,first),lastcoordinate,firstcoordinate);
                 for(var j = 0;j<linearray.length;j++){
                     command+= this._drawPoint(linearray[j]).s;
                 }
             } else if(this._distance(last,first)>=this.precision){
-                if(last==null)
-                    first = first;
                 command += first.s;
             }
         }
         command="M"+command.substr(1)+"Z";
         pth.setAttribute("d",command);
-        pth.setAttribute("stroke","black");
-        if(color!=null)
-            pth.setAttribute("fill",color);
+        pth.setAttribute("stroke",linecolor);
+        pth.setAttribute("fill","none");
+        this.svg.appendChild(pth);
+        for(var k = 1;k<arr.length;k++){
+            var pth = document.createElementNS("http://www.w3.org/2000/svg","path");
+            var command = "";
+            var last = null;
+            var first = null;
+            var lastcoordinate = null;
+            var firstcoordinate = null;
+
+            var oarr = arr[k].slice();
+            var last = null;
+            var ffirst = null;
+            var lastcoordinate = null;
+            var firstcoordinate = null;
+            for(var i = 0;i<oarr.length;i++){
+                var newPoint = this._drawPoint(oarr[i]);
+                if(newPoint!=null){
+                    if(last!=null && (this._distance(last,newPoint))>=this.precision*10 && (this.atscnewPointn(last) || this.atscnewPointn(newPoint))){
+                        var linearray = this._linesbetween(this._distance(last,newPoint),lastcoordinate,oarr[i]);
+                        for(var j = 0;j<linearray.length;j++){
+                            command+= this._drawPoint(linearray[j]).s;
+                        }
+                        last = newPoint;
+                        lastcoordinate = oarr[i];
+                    } else if(last==null || (this._distance(last,newPoint))>=this.precision){
+                        if(last==null){
+                            ffirst = newPoint;
+                            firstcoordinate = oarr[i];
+                        }
+                        command += newPoint.s;
+                        last = newPoint;
+                        lastcoordinate = oarr[i];
+                    }
+                }
+            }
+            if(ffirst!=null && last!=null)
+                command += ffirst.s;
+            if(first!=null)
+                command += first.s;
+            command="M"+command.substr(1)+"Z";
+            pth.setAttribute("d",command);
+            pth.setAttribute("stroke",linecolor);
+            pth.setAttribute("fill","none");
+            this.svg.appendChild(pth);
+        }
+    }
+    this._drawLineString = function(arr,linecolor){
+        //this time with no holes, it's terrible
+        var pth = document.createElementNS("http://www.w3.org/2000/svg","path");
+        var oarr = arr[0].slice();
+        var command = "";
+        var last = null;
+        var first = null;
+        var lastcoordinate = null;
+        var firstcoordinate = null;
+        for(var i = 0;i<oarr.length;i++){
+            var newPoint = this._drawPoint(oarr[i]);
+            if(newPoint!=null){
+                if(last!=null && (this._distance(last,newPoint))>=this.precision*10 && (this.atscnewPointn(last) || this.atscnewPointn(newPoint))){
+                    var linearray = this._linesbetween(this._distance(last,newPoint),lastcoordinate,oarr[i]);
+                    for(var j = 0;j<linearray.length;j++){
+                        command+= this._drawPoint(linearray[j]).s;
+                    }
+                    last = newPoint;
+                    lastcoordinate = oarr[i];
+                } else if(last==null || (this._distance(last,newPoint))>=this.precision){
+                    if(last==null){
+                        first = newPoint;
+                        firstcoordinate = oarr[i];
+                    }
+                    command += newPoint.s;
+                    last = newPoint;
+                    lastcoordinate = oarr[i];
+                }
+            }
+        }
+        command="M"+command.substr(1);
+        pth.setAttribute("d",command);
+        pth.setAttribute("stroke",linecolor);
+        pth.setAttribute("fill","none");
         this.svg.appendChild(pth);
     }
 
